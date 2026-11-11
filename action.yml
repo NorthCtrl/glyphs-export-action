@@ -10,7 +10,7 @@ inputs:
     description: >-
       Which Glyphs to export with. A build number such as `3536` (reproducible),
       a major version `3` or `4` (newest stable build of that major, changes over time),
-      or a display version such as `3.5.1`. Pin a Glyphs 4 build as `4.1.1-4108`.
+      or a display version such as `3.5.1`.
     required: true
   sources:
     description: >-

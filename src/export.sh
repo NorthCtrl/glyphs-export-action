@@ -33,49 +33,11 @@ find_app() {
 	if [ -d "$1" ]; then find "$1" -maxdepth 1 -name '*.app' | head -n 1; fi
 }
 
-# Fallback for Glyphs 4: glyphs-cli 0.7.0 cannot install it because its version
-# index lists only Glyphs 2 and 3. This downloads the app from Glyphs' own update
-# server instead. Remove it, and its use below, once glyphs-cli lists Glyphs 4.
-glyphs_cli_lists_glyphs_4() {
-	# Rows for Glyphs apps already on the machine show a path, not <remote>.
-	[ -n "$(glyphs version list --remote --plain --no-header 4 | awk -F '\t' '$3 == "<remote>"')" ]
-}
-
-install_from_glyphs_feed() {
-	local version=$1 dir=$2 feed found url signature
-	case "$version" in
-	4 | 4.*-*) ;;
-	*) fail "glyphs-cli cannot install Glyphs 4 yet. Use 4 for the newest stable Glyphs 4, or pin a build with its version number, for example 4.1.1-4108." ;;
-	esac
-	feed=$(curl -fsSL --retry 3 https://updates.glyphsapp.com/appcast4.xml) ||
-		fail "Could not read Glyphs' update feed, https://updates.glyphsapp.com/appcast4.xml."
-	found=$(feed_tool find "$version" <<<"$feed") ||
-		fail "Could not find Glyphs $version in https://updates.glyphsapp.com/appcast4.xml."
-	url=$(sed -n 1p <<<"$found")
-	signature=$(sed -n 2p <<<"$found")
-	echo "Downloading $url"
-	curl -fSL --retry 3 --progress-bar -o "$dir/glyphs.zip" "$url" ||
-		fail "Could not download $url. Does Glyphs $version exist?"
-	if [ -n "$signature" ]; then
-		feed_tool verify "$dir/glyphs.zip" "$signature" ||
-			fail "The Glyphs $version download failed its signature check, so it was not installed."
-		echo "The download matches its signature in Glyphs' update feed."
-	else
-		echo "::warning title=Glyphs download::Glyphs' update feed no longer lists $version, so only its Apple code signature can be checked."
-	fi
-	ditto -x -k "$dir/glyphs.zip" "$dir"
-	rm "$dir/glyphs.zip"
-}
-
-feed_tool() {
-	"$PYTHON" -P "$action_dir/src/glyphs4_feed.py" "$@"
-}
-
 # Check the inputs before installing anything.
 
-version_pattern='^[0-9]+(\.[0-9]+)*(-[0-9]+)?$'
+version_pattern='^[0-9]+(\.[0-9]+)*$'
 [[ $GLYPHS_VERSION =~ $version_pattern ]] ||
-	fail "glyphs-version '$GLYPHS_VERSION' is not a Glyphs version. Use a build such as 3536, a major version such as 3 or 4, or a pinned Glyphs 4 build such as 4.1.1-4108."
+	fail "glyphs-version '$GLYPHS_VERSION' is not a Glyphs version. Use a build such as 3536, a major version such as 3 or 4, or a version number such as 3.5.1."
 
 sources=()
 default_ifs=$IFS
@@ -141,21 +103,15 @@ app=$(find_app "$install_dir")
 if [ -z "$app" ]; then
 	echo "::group::Install Glyphs $GLYPHS_VERSION"
 	mkdir -p "$install_dir"
-	case "$GLYPHS_VERSION" in
-	4 | 4.*) glyphs_cli_lists_glyphs_4 || install_from_glyphs_feed "$GLYPHS_VERSION" "$install_dir" ;;
-	esac
-	if [ -z "$(find_app "$install_dir")" ]; then
-		# The pinned form 3.5.1-3536 is passed on as the build, 3536.
-		glyphs version install --app --output "$install_dir" "${GLYPHS_VERSION##*-}" ||
-			fail "glyphs-cli could not install Glyphs $GLYPHS_VERSION; see the log. A Glyphs 4 build needs its version number, for example 4.1.1-4108."
-	fi
+	glyphs version install --app --output "$install_dir" "$GLYPHS_VERSION" ||
+		fail "glyphs-cli could not install Glyphs $GLYPHS_VERSION; see the log."
 	app=$(find_app "$install_dir")
 	[ -n "$app" ] || fail "Installing Glyphs $GLYPHS_VERSION did not produce an app in $install_dir."
 	echo "::endgroup::"
 fi
 
 # Check that the app is signed by Glyphs' developer, Georg Seifert (Apple team
-# X2L8375ZQ7), and unchanged since, whichever way it was downloaded.
+# X2L8375ZQ7), and unchanged since it was signed.
 codesign --verify --deep --strict \
 	-R='anchor apple generic and certificate leaf[subject.OU] = "X2L8375ZQ7"' "$app" ||
 	fail "$app is not signed by Glyphs' developer, or has changed since it was signed."
