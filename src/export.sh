@@ -115,10 +115,12 @@ app=$(find_app "$install_dir")
 if [ -z "$app" ]; then
 	echo "::group::Install Glyphs $GLYPHS_VERSION"
 	mkdir -p "$install_dir"
-	selector=${GLYPHS_VERSION##*-}
-	known=$("$glyphs" version list --remote --plain --no-header "$selector")
-	if [ -n "$known" ]; then
-		"$glyphs" version install --app --output "$install_dir" "$selector"
+	# glyphs-cli can install this version if its index has any build of the same
+	# major. Rows for builds already installed show a path instead of <remote>.
+	major=${GLYPHS_VERSION%%[.-]*}
+	remote=$("$glyphs" version list --remote --plain --no-header "$major" | awk -F '\t' '$3 == "<remote>"')
+	if [ -n "$remote" ]; then
+		"$glyphs" version install --app --output "$install_dir" "${GLYPHS_VERSION##*-}"
 	else
 		install_from_glyphs_feed "$GLYPHS_VERSION" "$install_dir"
 	fi
@@ -132,9 +134,10 @@ fi
 # "Failed reading font", every time on a fresh runner.
 "$lsregister" -f "$app"
 
-resolved=$("$glyphs" version resolve "$app" --plain)
-display_version=$(sed -n 1p <<<"$resolved")
-build=$(sed -n 2p <<<"$resolved")
+# Read the version from the app itself: `glyphs version resolve` takes the build
+# from the file name, so "Glyphs 3.5.1-3536.app" gives "3536.app".
+display_version=$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")
+build=$(plutil -extract CFBundleVersion raw "$app/Contents/Info.plist")
 echo "::notice title=Glyphs version::Exporting with Glyphs $display_version ($build), selected by glyphs-version '$GLYPHS_VERSION'."
 
 # Export.
