@@ -42,24 +42,33 @@ glyphs_cli_lists_glyphs_4() {
 }
 
 install_from_glyphs_feed() {
-	local version=$1 dir=$2 url
+	local version=$1 dir=$2 feed found url signature
 	case "$version" in
-	4)
-		url=$(curl -fsSL --retry 3 https://updates.glyphsapp.com/appcast4.xml | "$PYTHON" -I -c '
-import sys, xml.etree.ElementTree as ET
-ns = {"sparkle": "http://www.andymatuschak.org/xml-namespaces/sparkle"}
-stable = [i for i in ET.parse(sys.stdin).iter("item") if i.find("sparkle:channel", ns) is None]
-newest = max(stable, key=lambda i: int(i.findtext("sparkle:version", namespaces=ns)))
-print(newest.find("enclosure").get("url"))') || fail "Could not find the newest Glyphs 4 in https://updates.glyphsapp.com/appcast4.xml."
-		;;
-	4.*-*) url="https://updates.glyphsapp.com/Glyphs$version.zip" ;;
+	4 | 4.*-*) ;;
 	*) fail "glyphs-cli cannot install Glyphs 4 yet. Use 4 for the newest stable Glyphs 4, or pin a build with its version number, for example 4.1.1-4108." ;;
 	esac
+	feed=$(curl -fsSL --retry 3 https://updates.glyphsapp.com/appcast4.xml) ||
+		fail "Could not read Glyphs' update feed, https://updates.glyphsapp.com/appcast4.xml."
+	found=$(feed_tool find "$version" <<<"$feed") ||
+		fail "Could not find Glyphs $version in https://updates.glyphsapp.com/appcast4.xml."
+	url=$(sed -n 1p <<<"$found")
+	signature=$(sed -n 2p <<<"$found")
 	echo "Downloading $url"
 	curl -fSL --retry 3 --progress-bar -o "$dir/glyphs.zip" "$url" ||
 		fail "Could not download $url. Does Glyphs $version exist?"
+	if [ -n "$signature" ]; then
+		feed_tool verify "$dir/glyphs.zip" "$signature" ||
+			fail "The Glyphs $version download failed its signature check, so it was not installed."
+		echo "The download matches its signature in Glyphs' update feed."
+	else
+		echo "::warning title=Glyphs download::Glyphs' update feed no longer lists $version, so only its Apple code signature can be checked."
+	fi
 	ditto -x -k "$dir/glyphs.zip" "$dir"
 	rm "$dir/glyphs.zip"
+}
+
+feed_tool() {
+	"$PYTHON" -P "$action_dir/src/glyphs4_feed.py" "$@"
 }
 
 # Check the inputs before installing anything.
@@ -144,6 +153,12 @@ if [ -z "$app" ]; then
 	[ -n "$app" ] || fail "Installing Glyphs $GLYPHS_VERSION did not produce an app in $install_dir."
 	echo "::endgroup::"
 fi
+
+# Check that the app is signed by Glyphs' developer, Georg Seifert (Apple team
+# X2L8375ZQ7), and unchanged since, whichever way it was downloaded.
+codesign --verify --deep --strict \
+	-R='anchor apple generic and certificate leaf[subject.OU] = "X2L8375ZQ7"' "$app" ||
+	fail "$app is not signed by Glyphs' developer, or has changed since it was signed."
 
 # Register the app with Launch Services, so macOS knows the .glyphs and
 # .glyphspackage file types. Without this, glyphs-cli fails with

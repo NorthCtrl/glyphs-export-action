@@ -1,3 +1,4 @@
 glyphs-cli==0.7.0
 pyobjc-core==13.0
 pyobjc-framework-Cocoa==13.0
+cryptography==50.0.2
