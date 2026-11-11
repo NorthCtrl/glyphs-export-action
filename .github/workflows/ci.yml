@@ -1,0 +1,179 @@
+name: CI
+
+# macOS minutes are expensive, so the exports run on pull requests and main only.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install actionlint
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum --check
+          tar -xzf "$archive" actionlint
+      # actionlint also runs shellcheck on the workflow scripts.
+      - name: actionlint
+        run: ./actionlint
+      - name: shellcheck
+        run: shellcheck src/*.sh
+      - name: Python syntax
+        run: python3 -m py_compile src/report.py test/check_fonts.py
+
+  # The action must refuse to run on anything but macOS.
+  not-macos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./
+        id: export
+        continue-on-error: true
+        with:
+          glyphs-version: "3"
+          sources: test/ExportTest.glyphs
+      - name: Expect the action to fail
+        if: steps.export.outcome != 'failure'
+        run: |
+          echo "::error::The action did not fail on Linux."
+          exit 1
+
+  export:
+    name: export (Glyphs ${{ matrix.glyphs }})
+    needs: lint
+    runs-on: macos-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - glyphs: "3"
+            pinned: "3536"
+          - glyphs: "4"
+            pinned: "4.1.1-4108"
+    env:
+      # mekkablue/UnnestComponents (Apache-2.0), for the plug-in test.
+      UNNEST_COMPONENTS_SHA: 20e813a5c53ba2ef940f2af3729bd6a00085107f
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Get the UnnestComponents plug-in
+        run: |
+          git init --quiet "$RUNNER_TEMP/UnnestComponents"
+          cd "$RUNNER_TEMP/UnnestComponents"
+          git fetch --quiet --depth 1 https://github.com/mekkablue/UnnestComponents.git "$UNNEST_COMPONENTS_SHA"
+          git checkout --quiet FETCH_HEAD
+
+      - name: Export with the newest Glyphs ${{ matrix.glyphs }}
+        id: plain
+        uses: ./
+        with:
+          glyphs-version: ${{ matrix.glyphs }}
+          sources: test/ExportTest.glyphs
+          output-dir: out/plain
+          format: cff,tt
+
+      - name: Export with a plug-in
+        id: plugin
+        uses: ./
+        with:
+          glyphs-version: ${{ matrix.glyphs }}
+          sources: test/Plugin Test.glyphspackage
+          output-dir: out/plugin
+          format: tt
+          plugins: ${{ runner.temp }}/UnnestComponents/UnnestComponents.glyphsFilter
+
+      # glyphs-cli exits 0 when instances fail; the action must not.
+      - name: Export without the plug-in the source needs
+        id: missing-plugin
+        continue-on-error: true
+        uses: ./
+        with:
+          glyphs-version: ${{ matrix.glyphs }}
+          sources: test/Plugin Test.glyphspackage
+          output-dir: out/missing-plugin
+          format: tt
+
+      - name: Export with pinned Glyphs ${{ matrix.pinned }}
+        id: pinned
+        uses: ./
+        with:
+          glyphs-version: ${{ matrix.pinned }}
+          sources: test/*.glyphs
+          output-dir: out/pinned
+          format: tt
+          container: standard,woff2
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet --requirement test/requirements.txt
+
+      - name: Check the plain export
+        env:
+          FONTS: ${{ steps.plain.outputs.fonts }}
+          OUTPUT_DIR: ${{ steps.plain.outputs.output-dir }}
+        run: >-
+          python test/check_fonts.py B
+          ExportTest-Light.otf ExportTest-Bold.otf
+          ExportTest-Light.ttf ExportTest-Bold.ttf ExportTestVF.ttf
+
+      - name: Check the plug-in export
+        env:
+          FONTS: ${{ steps.plugin.outputs.fonts }}
+          OUTPUT_DIR: ${{ steps.plugin.outputs.output-dir }}
+        run: python test/check_fonts.py A PluginTest-Light.ttf PluginTest-Bold.ttf PluginTestVF.ttf
+
+      - name: Check the pinned export
+        env:
+          FONTS: ${{ steps.pinned.outputs.fonts }}
+          OUTPUT_DIR: ${{ steps.pinned.outputs.output-dir }}
+        run: >-
+          python test/check_fonts.py B
+          ExportTest-Light.ttf ExportTest-Bold.ttf ExportTestVF.ttf
+          ExportTest-Light.woff2 ExportTest-Bold.woff2 ExportTestVF.woff2
+
+      - name: Check the versions and the failure
+        env:
+          MAJOR: ${{ matrix.glyphs }}
+          PINNED: ${{ matrix.pinned }}
+          PLAIN_VERSION: ${{ steps.plain.outputs.glyphs-display-version }}
+          PLAIN_BUILD: ${{ steps.plain.outputs.glyphs-build }}
+          PINNED_BUILD: ${{ steps.pinned.outputs.glyphs-build }}
+          MISSING_PLUGIN: ${{ steps.missing-plugin.outcome }}
+          MISSING_PLUGIN_BUILD: ${{ steps.missing-plugin.outputs.glyphs-build }}
+          MISSING_PLUGIN_FONTS: ${{ steps.missing-plugin.outputs.fonts }}
+        run: |
+          echo "Newest Glyphs $MAJOR is $PLAIN_VERSION ($PLAIN_BUILD); pinned build is $PINNED_BUILD."
+          status=0
+          case "$PLAIN_VERSION" in "$MAJOR".*) ;; *) echo "::error::Expected Glyphs $MAJOR.x, got $PLAIN_VERSION"; status=1 ;; esac
+          [ "$PINNED_BUILD" = "${PINNED##*-}" ] || { echo "::error::Expected build ${PINNED##*-}, got $PINNED_BUILD"; status=1; }
+          # It must fail in the export, after Glyphs was installed, and export nothing.
+          [ "$MISSING_PLUGIN" = failure ] && [ -n "$MISSING_PLUGIN_BUILD" ] && [ -z "$MISSING_PLUGIN_FONTS" ] ||
+            { echo "::error::Export without its plug-in did not fail in the export"; status=1; }
+          # The action's packages must not leak into the Python that other steps use.
+          if python -c "import glyphs_cli" 2>/dev/null; then echo "::error::glyphs_cli is importable outside the action"; status=1; fi
+          exit "$status"

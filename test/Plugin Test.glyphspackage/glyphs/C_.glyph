@@ -1,0 +1,24 @@
+{
+glyphname = C;
+layers = (
+{
+layerId = light;
+shapes = (
+{
+ref = B;
+}
+);
+width = 600;
+},
+{
+layerId = bold;
+shapes = (
+{
+ref = B;
+}
+);
+width = 640;
+}
+);
+unicode = 67;
+}
