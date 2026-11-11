@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: NorthCtrl/glyphs-export-action@v0
+      - uses: NorthCtrl/glyphs-export-action@v1
         id: export
         with:
           glyphs-version: "3536"
@@ -79,7 +79,7 @@ so your builds stay the same:
           git clone --quiet https://github.com/mekkablue/UnnestComponents.git "$RUNNER_TEMP/UnnestComponents"
           git -C "$RUNNER_TEMP/UnnestComponents" checkout --quiet 20e813a5c53ba2ef940f2af3729bd6a00085107f
 
-      - uses: NorthCtrl/glyphs-export-action@v0
+      - uses: NorthCtrl/glyphs-export-action@v1
         with:
           glyphs-version: "3536"
           sources: MyFont.glyphspackage
@@ -132,6 +132,13 @@ has to be installed on the runner
   WOFF container, both outlines are written to the same `.woff2` name and the
   second wins. Export the two formats in separate steps if you need both.
 - **An unknown `format` value crashes glyphs-cli** instead of printing an error.
+
+## Versions
+
+Use `@v1`, which follows the newest 1.x release, or pin an exact release such as
+`@v1.0.0`. Changes that would break existing workflows only come in a new major
+version. Releases are listed on the
+[releases page](https://github.com/NorthCtrl/glyphs-export-action/releases).
 
 ## Licence
 
