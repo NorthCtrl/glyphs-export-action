@@ -1,0 +1,222 @@
+{
+.appVersion = "3536";
+.formatVersion = 3;
+axes = (
+{
+name = Weight;
+tag = wght;
+}
+);
+date = "2026-11-10 12:00:00 +0000";
+familyName = "Export Test";
+fontMaster = (
+{
+axesValues = (
+300
+);
+id = light;
+metricValues = (
+{
+over = 16;
+pos = 800;
+},
+{
+over = 16;
+pos = 700;
+},
+{
+over = 16;
+pos = 500;
+},
+{
+over = -16;
+},
+{
+over = -16;
+pos = -200;
+}
+);
+name = Light;
+},
+{
+axesValues = (
+700
+);
+id = bold;
+metricValues = (
+{
+over = 16;
+pos = 800;
+},
+{
+over = 16;
+pos = 700;
+},
+{
+over = 16;
+pos = 500;
+},
+{
+over = -16;
+},
+{
+over = -16;
+pos = -200;
+}
+);
+name = Bold;
+}
+);
+glyphs = (
+{
+glyphname = space;
+layers = (
+{
+layerId = light;
+width = 250;
+},
+{
+layerId = bold;
+width = 250;
+}
+);
+unicode = 32;
+},
+{
+glyphname = A;
+layers = (
+{
+layerId = light;
+shapes = (
+{
+closed = 1;
+nodes = (
+(50,0,l),
+(280,700,l),
+(320,700,l),
+(550,0,l),
+(510,0,l),
+(300,640,l),
+(90,0,l)
+);
+}
+);
+width = 600;
+},
+{
+layerId = bold;
+shapes = (
+{
+closed = 1;
+nodes = (
+(30,0,l),
+(250,700,l),
+(390,700,l),
+(610,0,l),
+(470,0,l),
+(320,520,l),
+(170,0,l)
+);
+}
+);
+width = 640;
+}
+);
+unicode = 65;
+},
+{
+glyphname = B;
+layers = (
+{
+layerId = light;
+shapes = (
+{
+ref = A;
+}
+);
+width = 600;
+},
+{
+layerId = bold;
+shapes = (
+{
+ref = A;
+}
+);
+width = 640;
+}
+);
+unicode = 66;
+},
+{
+glyphname = C;
+layers = (
+{
+layerId = light;
+shapes = (
+{
+ref = B;
+}
+);
+width = 600;
+},
+{
+layerId = bold;
+shapes = (
+{
+ref = B;
+}
+);
+width = 640;
+}
+);
+unicode = 67;
+}
+);
+instances = (
+{
+axesValues = (
+300
+);
+instanceInterpolations = {
+light = 1;
+};
+name = Light;
+weightClass = 300;
+},
+{
+axesValues = (
+700
+);
+instanceInterpolations = {
+bold = 1;
+};
+name = Bold;
+weightClass = 700;
+},
+{
+name = Regular;
+type = variable;
+}
+);
+metrics = (
+{
+type = ascender;
+},
+{
+type = "cap height";
+},
+{
+type = "x-height";
+},
+{
+type = baseline;
+},
+{
+type = descender;
+}
+);
+unitsPerEm = 1000;
+versionMajor = 1;
+versionMinor = 0;
+}

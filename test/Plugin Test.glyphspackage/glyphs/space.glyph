@@ -1,0 +1,14 @@
+{
+glyphname = space;
+layers = (
+{
+layerId = light;
+width = 250;
+},
+{
+layerId = bold;
+width = 250;
+}
+);
+unicode = 32;
+}

@@ -1,0 +1,134 @@
+{
+.appVersion = "3536";
+.formatVersion = 3;
+axes = (
+{
+name = Weight;
+tag = wght;
+}
+);
+date = "2026-11-10 12:00:00 +0000";
+familyName = "Plugin Test";
+fontMaster = (
+{
+axesValues = (
+300
+);
+id = light;
+metricValues = (
+{
+over = 16;
+pos = 800;
+},
+{
+over = 16;
+pos = 700;
+},
+{
+over = 16;
+pos = 500;
+},
+{
+over = -16;
+},
+{
+over = -16;
+pos = -200;
+}
+);
+name = Light;
+},
+{
+axesValues = (
+700
+);
+id = bold;
+metricValues = (
+{
+over = 16;
+pos = 800;
+},
+{
+over = 16;
+pos = 700;
+},
+{
+over = 16;
+pos = 500;
+},
+{
+over = -16;
+},
+{
+over = -16;
+pos = -200;
+}
+);
+name = Bold;
+}
+);
+instances = (
+{
+axesValues = (
+300
+);
+customParameters = (
+{
+name = Filter;
+value = UnnestComponents;
+}
+);
+instanceInterpolations = {
+light = 1;
+};
+name = Light;
+weightClass = 300;
+},
+{
+axesValues = (
+700
+);
+customParameters = (
+{
+name = Filter;
+value = UnnestComponents;
+}
+);
+instanceInterpolations = {
+bold = 1;
+};
+name = Bold;
+weightClass = 700;
+},
+{
+customParameters = (
+{
+name = Filter;
+value = UnnestComponents;
+}
+);
+name = Regular;
+type = variable;
+}
+);
+metrics = (
+{
+type = ascender;
+},
+{
+type = "cap height";
+},
+{
+type = "x-height";
+},
+{
+type = baseline;
+},
+{
+type = descender;
+}
+);
+unitsPerEm = 1000;
+versionMajor = 1;
+versionMinor = 0;
+}
