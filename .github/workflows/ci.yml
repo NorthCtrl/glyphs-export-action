@@ -106,17 +106,6 @@ jobs:
           format: tt
           plugins: ${{ runner.temp }}/UnnestComponents/UnnestComponents.glyphsFilter
 
-      # glyphs-cli exits 0 when instances fail; the action must not.
-      - name: Export without the plug-in the source needs
-        id: missing-plugin
-        continue-on-error: true
-        uses: ./
-        with:
-          glyphs-version: ${{ matrix.glyphs }}
-          sources: test/Plugin Test.glyphspackage
-          output-dir: out/missing-plugin
-          format: tt
-
       - name: Export with pinned Glyphs ${{ matrix.pinned }}
         id: pinned
         uses: ./
@@ -156,24 +145,56 @@ jobs:
           ExportTest-Light.ttf ExportTest-Bold.ttf ExportTestVF.ttf
           ExportTest-Light.woff2 ExportTest-Bold.woff2 ExportTestVF.woff2
 
-      - name: Check the versions and the failure
+      - name: Check the versions
         env:
           MAJOR: ${{ matrix.glyphs }}
           PINNED: ${{ matrix.pinned }}
           PLAIN_VERSION: ${{ steps.plain.outputs.glyphs-display-version }}
           PLAIN_BUILD: ${{ steps.plain.outputs.glyphs-build }}
           PINNED_BUILD: ${{ steps.pinned.outputs.glyphs-build }}
-          MISSING_PLUGIN: ${{ steps.missing-plugin.outcome }}
-          MISSING_PLUGIN_BUILD: ${{ steps.missing-plugin.outputs.glyphs-build }}
-          MISSING_PLUGIN_FONTS: ${{ steps.missing-plugin.outputs.fonts }}
         run: |
           echo "Newest Glyphs $MAJOR is $PLAIN_VERSION ($PLAIN_BUILD); pinned build is $PINNED_BUILD."
           status=0
           case "$PLAIN_VERSION" in "$MAJOR".*) ;; *) echo "::error::Expected Glyphs $MAJOR.x, got $PLAIN_VERSION"; status=1 ;; esac
           [ "$PINNED_BUILD" = "${PINNED##*-}" ] || { echo "::error::Expected build ${PINNED##*-}, got $PINNED_BUILD"; status=1; }
-          # It must fail in the export, after Glyphs was installed, and export nothing.
-          [ "$MISSING_PLUGIN" = failure ] && [ -n "$MISSING_PLUGIN_BUILD" ] && [ -z "$MISSING_PLUGIN_FONTS" ] ||
-            { echo "::error::Export without its plug-in did not fail in the export"; status=1; }
           # The action's packages must not leak into the Python that other steps use.
           if python -c "import glyphs_cli" 2>/dev/null; then echo "::error::glyphs_cli is importable outside the action"; status=1; fi
           exit "$status"
+
+  # glyphs-cli exits 0 when instances fail; the action must not. Kept out of the
+  # export job, as the errors it reports on purpose show up on the run page.
+  missing-plugin:
+    name: expected failure, missing plug-in (Glyphs ${{ matrix.glyphs }})
+    needs: lint
+    runs-on: macos-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        glyphs: ["3", "4"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Export without the plug-in the source needs
+        id: export
+        continue-on-error: true
+        uses: ./
+        with:
+          glyphs-version: ${{ matrix.glyphs }}
+          sources: test/Plugin Test.glyphspackage
+          output-dir: out/missing-plugin
+          format: tt
+
+      # It must fail in the export, after Glyphs was installed, and export nothing.
+      - name: Expect the export to fail
+        env:
+          OUTCOME: ${{ steps.export.outcome }}
+          BUILD: ${{ steps.export.outputs.glyphs-build }}
+          FONTS: ${{ steps.export.outputs.fonts }}
+        run: |
+          if [ "$OUTCOME" != failure ] || [ -z "$BUILD" ] || [ -n "$FONTS" ]; then
+            echo "::error::Export without its plug-in did not fail in the export (outcome $OUTCOME, build '$BUILD')."
+            exit 1
+          fi
