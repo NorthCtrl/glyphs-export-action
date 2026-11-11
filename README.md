@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: NorthCtrl/glyphs-export-action@v0
+      - uses: NorthCtrl/glyphs-export-action@v1
         id: export
         with:
           glyphs-version: "3536"
@@ -79,7 +79,7 @@ so your builds stay the same:
           git clone --quiet https://github.com/mekkablue/UnnestComponents.git "$RUNNER_TEMP/UnnestComponents"
           git -C "$RUNNER_TEMP/UnnestComponents" checkout --quiet 20e813a5c53ba2ef940f2af3729bd6a00085107f
 
-      - uses: NorthCtrl/glyphs-export-action@v0
+      - uses: NorthCtrl/glyphs-export-action@v1
         with:
           glyphs-version: "3536"
           sources: MyFont.glyphspackage
