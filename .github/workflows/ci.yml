@@ -71,7 +71,7 @@ jobs:
           - glyphs: "3"
             pinned: "3536"
           - glyphs: "4"
-            pinned: "4.1.1-4108"
+            pinned: "4107"
     env:
       # mekkablue/UnnestComponents (Apache-2.0), for the plug-in test.
       UNNEST_COMPONENTS_SHA: 20e813a5c53ba2ef940f2af3729bd6a00085107f
@@ -156,7 +156,7 @@ jobs:
           echo "Newest Glyphs $MAJOR is $PLAIN_VERSION ($PLAIN_BUILD); pinned build is $PINNED_BUILD."
           status=0
           case "$PLAIN_VERSION" in "$MAJOR".*) ;; *) echo "::error::Expected Glyphs $MAJOR.x, got $PLAIN_VERSION"; status=1 ;; esac
-          [ "$PINNED_BUILD" = "${PINNED##*-}" ] || { echo "::error::Expected build ${PINNED##*-}, got $PINNED_BUILD"; status=1; }
+          [ "$PINNED_BUILD" = "$PINNED" ] || { echo "::error::Expected build $PINNED, got $PINNED_BUILD"; status=1; }
           # The action's packages must not leak into the Python that other steps use.
           if python -c "import glyphs_cli" 2>/dev/null; then echo "::error::glyphs_cli is importable outside the action"; status=1; fi
           exit "$status"

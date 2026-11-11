@@ -34,10 +34,9 @@ jobs:
 
 | Value | Meaning |
 | --- | --- |
-| `3536` | Exactly Glyphs build 3536. Reproducible. |
+| `3536` or `4108` | Exactly that Glyphs build, of Glyphs 3 or Glyphs 4. Reproducible. |
 | `3` or `4` | The newest stable build of Glyphs 3 or Glyphs 4 when the job runs. |
 | `3.5.1` | The newest stable build with that version number. |
-| `4.1.1-4108` | Exactly Glyphs 4 build 4108, see below. |
 
 `3` and `4` follow Glyphs releases, so the same commit can give different fonts
 next month. **Pin a build for releases.** The build that was used is in the
@@ -46,22 +45,6 @@ next month. **Pin a build for releases.** The build that was used is in the
 There is no `latest`: Glyphs 3 and Glyphs 4 differ a lot, and a run should not
 move from one to the other on its own. Glyphs 4 opens Glyphs 3 files, but
 Glyphs 3 cannot open files saved in the Glyphs 4 file format.
-
-### Glyphs 4
-
-glyphs-cli 0.7.0 cannot install Glyphs 4 yet: its list of versions stops at
-Glyphs 3. Until it can, this action downloads Glyphs 4 from Glyphs' own update
-server. That works for `4` and for a pinned build written with its version
-number, like `4.1.1-4108` (the name of the Glyphs download). A bare Glyphs 4
-build number such as `4108` does not work yet. A pinned Glyphs 4 build only
-works while Glyphs still offers its download.
-
-The server is `updates.glyphsapp.com`, and the list of downloads is
-`appcast4.xml`, the same feed Glyphs 4 checks for its own updates. Each
-download in it is signed with Glyphs' update key, and the action checks that
-signature before installing. The feed only lists the newest builds, so an
-older pinned build can't be checked this way: the action warns, and relies on
-the Apple code signature check below.
 
 ## Inputs
 
@@ -111,7 +94,6 @@ will fail to load.
 
 1. Fails straight away if the runner is not macOS.
 2. Sets up Python 3.12 and installs the pinned glyphs-cli and pyobjc versions
-   (and `cryptography`, for the Glyphs 4 signature check)
    from [`requirements.txt`](requirements.txt) into a folder of their own, so
    the `python` your other steps use does not change.
 3. Installs the full Glyphs app into the runner's temporary folder. A second use
@@ -135,10 +117,14 @@ has to be installed on the runner
 ## Known issues
 
 - **"Failed reading font" on GitHub runners.** glyphs-cli cannot read a source
-  until macOS knows the Glyphs file types, which happens when the app is
-  registered. An app copied to `/Applications` is registered a little later, so
-  an export straight after installing fails at random. This action registers the
-  app itself before exporting, so it does not retry.
+  until macOS knows the Glyphs file types, which happens when a Glyphs app is
+  registered with Launch Services. A fresh runner has none. The copy
+  `glyphs version install` puts in glyphs-cli's own folder is never registered,
+  so every export fails. One installed into `/Applications` with `--app` is
+  registered a few seconds later, so an export straight after installing fails
+  and a later one passes. This action registers the app itself before
+  exporting, so it does not retry. On a Mac that already has Glyphs installed,
+  the file types are known and none of this shows.
 - **glyphs-cli exits 0 when instances fail**, for example when a filter plug-in
   is missing. This action reads the report and fails the step instead.
 - **Glyphs 3 skips CFF variable fonts** with a warning. Glyphs 4 exports them.
