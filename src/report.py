@@ -30,7 +30,12 @@ def main(report_path, status):
     reports = []
     if os.path.exists(report_path):
         with open(report_path, encoding="utf-8") as file:
-            reports = [json.loads(line) for line in file if line.strip()]
+            for line in file:
+                try:
+                    reports.append(json.loads(line))
+                except json.JSONDecodeError:
+                    if line.strip():
+                        print(f"::warning::Could not read a line of the glyphs-cli report: {escape_data(line.strip())}")
 
     fonts = []
     errors = 0

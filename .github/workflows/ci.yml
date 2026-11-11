@@ -164,10 +164,16 @@ jobs:
           PLAIN_BUILD: ${{ steps.plain.outputs.glyphs-build }}
           PINNED_BUILD: ${{ steps.pinned.outputs.glyphs-build }}
           MISSING_PLUGIN: ${{ steps.missing-plugin.outcome }}
+          MISSING_PLUGIN_BUILD: ${{ steps.missing-plugin.outputs.glyphs-build }}
+          MISSING_PLUGIN_FONTS: ${{ steps.missing-plugin.outputs.fonts }}
         run: |
           echo "Newest Glyphs $MAJOR is $PLAIN_VERSION ($PLAIN_BUILD); pinned build is $PINNED_BUILD."
           status=0
           case "$PLAIN_VERSION" in "$MAJOR".*) ;; *) echo "::error::Expected Glyphs $MAJOR.x, got $PLAIN_VERSION"; status=1 ;; esac
           [ "$PINNED_BUILD" = "${PINNED##*-}" ] || { echo "::error::Expected build ${PINNED##*-}, got $PINNED_BUILD"; status=1; }
-          [ "$MISSING_PLUGIN" = failure ] || { echo "::error::Export without its plug-in did not fail"; status=1; }
+          # It must fail in the export, after Glyphs was installed, and export nothing.
+          [ "$MISSING_PLUGIN" = failure ] && [ -n "$MISSING_PLUGIN_BUILD" ] && [ -z "$MISSING_PLUGIN_FONTS" ] ||
+            { echo "::error::Export without its plug-in did not fail in the export"; status=1; }
+          # The action's packages must not leak into the Python that other steps use.
+          if python -c "import glyphs_cli" 2>/dev/null; then echo "::error::glyphs_cli is importable outside the action"; status=1; fi
           exit "$status"

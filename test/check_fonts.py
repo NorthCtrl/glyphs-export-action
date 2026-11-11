@@ -33,7 +33,8 @@ def main(component, expected):
         if absent:
             problems.append(f"{path} has no glyph {', '.join(absent)}")
         elif "glyf" in font:
-            components = [c.glyphName for c in font["glyf"]["C"].components]
+            glyph = font["glyf"]["C"]
+            components = [c.glyphName for c in glyph.components] if glyph.isComposite() else []
             if components != [component]:
                 problems.append(f"{path}: C uses {components}, expected [{component!r}]")
         print(f"ok  {path} ({len(glyphs)} glyphs)")

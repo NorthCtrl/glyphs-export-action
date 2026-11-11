@@ -35,7 +35,12 @@ find_app() {
 
 # Fallback for Glyphs 4: glyphs-cli 0.7.0 cannot install it because its version
 # index lists only Glyphs 2 and 3. This downloads the app from Glyphs' own update
-# server instead. Remove it once `glyphs version list --remote 4` shows 4.x builds.
+# server instead. Remove it, and its use below, once glyphs-cli lists Glyphs 4.
+glyphs_cli_lists_glyphs_4() {
+	# Rows for Glyphs apps already on the machine show a path, not <remote>.
+	[ -n "$(glyphs version list --remote --plain --no-header 4 | awk -F '\t' '$3 == "<remote>"')" ]
+}
+
 install_from_glyphs_feed() {
 	local version=$1 dir=$2 url
 	case "$version" in
@@ -45,15 +50,14 @@ import sys, xml.etree.ElementTree as ET
 ns = {"sparkle": "http://www.andymatuschak.org/xml-namespaces/sparkle"}
 stable = [i for i in ET.parse(sys.stdin).iter("item") if i.find("sparkle:channel", ns) is None]
 newest = max(stable, key=lambda i: int(i.findtext("sparkle:version", namespaces=ns)))
-print(newest.find("enclosure").get("url"))')
+print(newest.find("enclosure").get("url"))') || fail "Could not find the newest Glyphs 4 in https://updates.glyphsapp.com/appcast4.xml."
 		;;
 	4.*-*) url="https://updates.glyphsapp.com/Glyphs$version.zip" ;;
-	4*) fail "glyphs-cli cannot install Glyphs 4 builds yet. Pin a Glyphs 4 build with its display version, for example 4.1.1-4108, or use 4 for the newest stable Glyphs 4." ;;
-	*) fail "No Glyphs version matches '$version'. Run 'glyphs version list --remote' to see the versions glyphs-cli knows." ;;
+	*) fail "glyphs-cli cannot install Glyphs 4 yet. Use 4 for the newest stable Glyphs 4, or pin a build with its version number, for example 4.1.1-4108." ;;
 	esac
 	echo "Downloading $url"
 	curl -fSL --retry 3 --progress-bar -o "$dir/glyphs.zip" "$url" ||
-		fail "Could not download $url. Is $version a Glyphs version that exists?"
+		fail "Could not download $url. Does Glyphs $version exist?"
 	ditto -x -k "$dir/glyphs.zip" "$dir"
 	rm "$dir/glyphs.zip"
 }
@@ -68,11 +72,16 @@ sources=()
 default_ifs=$IFS
 shopt -s nullglob
 while IFS= read -r pattern; do
-	# Unquoted on purpose so globs expand; an empty IFS keeps paths with spaces whole.
-	IFS=
-	# shellcheck disable=SC2206
-	matches=($pattern)
-	IFS=$default_ifs
+	if [ -e "$pattern" ]; then
+		# An existing path is taken as it is, so names like MyFont[wght].glyphs work.
+		matches=("$pattern")
+	else
+		# Unquoted on purpose so globs expand; an empty IFS keeps paths with spaces whole.
+		IFS=
+		# shellcheck disable=SC2206
+		matches=($pattern)
+		IFS=$default_ifs
+	fi
 	[ ${#matches[@]} -gt 0 ] || fail "No source file matches '$pattern'."
 	for match in "${matches[@]}"; do
 		[ -e "$match" ] || fail "Source file '$match' does not exist."
@@ -99,10 +108,18 @@ done < <(lines "$PLUGINS")
 mkdir -p "$OUTPUT_DIR"
 output_dir=$(cd "$OUTPUT_DIR" && pwd)
 
-# Install glyphs-cli, and pyobjc for Glyphs' Python API and Python plug-ins.
+# Install glyphs-cli, and pyobjc for Glyphs' Python API and Python plug-ins, into a
+# folder of their own, so the Python that other steps use stays as it was.
+# PYTHONPATH also reaches the Python that Glyphs runs plug-ins in.
 
-"$PYTHON" -m pip install --quiet --disable-pip-version-check --requirement "$action_dir/requirements.txt"
-glyphs="$(dirname "$PYTHON")/glyphs"
+packages="${RUNNER_TEMP:?}/glyphs-export-action/python-packages"
+if [ ! -d "$packages" ]; then
+	"$PYTHON" -m pip install --quiet --disable-pip-version-check --target "$packages" --requirement "$action_dir/requirements.txt"
+fi
+export PYTHONPATH="$packages"
+glyphs() {
+	"$PYTHON" -P -c 'import glyphs_cli; glyphs_cli.main()' "$@"
+}
 python_framework="$("$PYTHON" -c 'import sys; print(sys.base_prefix)')/Python"
 [ -f "$python_framework" ] || fail "Python at $PYTHON is not a framework build; Glyphs needs one."
 
@@ -115,14 +132,13 @@ app=$(find_app "$install_dir")
 if [ -z "$app" ]; then
 	echo "::group::Install Glyphs $GLYPHS_VERSION"
 	mkdir -p "$install_dir"
-	# glyphs-cli can install this version if its index has any build of the same
-	# major. Rows for builds already installed show a path instead of <remote>.
-	major=${GLYPHS_VERSION%%[.-]*}
-	remote=$("$glyphs" version list --remote --plain --no-header "$major" | awk -F '\t' '$3 == "<remote>"')
-	if [ -n "$remote" ]; then
-		"$glyphs" version install --app --output "$install_dir" "${GLYPHS_VERSION##*-}"
-	else
-		install_from_glyphs_feed "$GLYPHS_VERSION" "$install_dir"
+	case "$GLYPHS_VERSION" in
+	4 | 4.*) glyphs_cli_lists_glyphs_4 || install_from_glyphs_feed "$GLYPHS_VERSION" "$install_dir" ;;
+	esac
+	if [ -z "$(find_app "$install_dir")" ]; then
+		# The pinned form 3.5.1-3536 is passed on as the build, 3536.
+		glyphs version install --app --output "$install_dir" "${GLYPHS_VERSION##*-}" ||
+			fail "glyphs-cli could not install Glyphs $GLYPHS_VERSION; see the log. A Glyphs 4 build needs its version number, for example 4.1.1-4108."
 	fi
 	app=$(find_app "$install_dir")
 	[ -n "$app" ] || fail "Installing Glyphs $GLYPHS_VERSION did not produce an app in $install_dir."
@@ -155,7 +171,7 @@ printf 'Running: glyphs'
 printf ' %q' "${args[@]}"
 echo
 status=0
-"$glyphs" "${args[@]}" || status=$?
+glyphs "${args[@]}" || status=$?
 
 # glyphs-cli exits 0 even when instances fail, so the report decides.
 {

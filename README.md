@@ -37,7 +37,7 @@ jobs:
 | `3536` | Exactly Glyphs build 3536. Reproducible. |
 | `3` or `4` | The newest stable build of Glyphs 3 or Glyphs 4 when the job runs. |
 | `3.5.1` | The newest stable build with that version number. |
-| `4.1.1-4108` | Exactly Glyphs 4 build 4108. Reproducible, see below. |
+| `4.1.1-4108` | Exactly Glyphs 4 build 4108, see below. |
 
 `3` and `4` follow Glyphs releases, so the same commit can give different fonts
 next month. **Pin a build for releases.** The build that was used is in the
@@ -54,7 +54,8 @@ Glyphs 3. Until it can, this action downloads Glyphs 4 from Glyphs' own update
 server. That works for `4` and for a pinned build written with its version
 number, like `4.1.1-4108` (the name of the Glyphs download). A bare Glyphs 4
 build number such as `4108` does not work yet. A pinned Glyphs 4 build only
-works while Glyphs still offers its download.
+works while Glyphs still offers its download, and the action trusts that
+download as it is: it checks no checksum.
 
 ## Inputs
 
@@ -103,9 +104,9 @@ will fail to load.
 ## What it does
 
 1. Fails straight away if the runner is not macOS.
-2. Sets up Python 3.12 without changing the `python` your other steps use, and
-   installs the pinned glyphs-cli and pyobjc versions from
-   [`requirements.txt`](requirements.txt).
+2. Sets up Python 3.12 and installs the pinned glyphs-cli and pyobjc versions
+   from [`requirements.txt`](requirements.txt) into a folder of their own, so
+   the `python` your other steps use does not change.
 3. Installs the full Glyphs app into the runner's temporary folder. A second use
    of the action in the same job with the same `glyphs-version` reuses it. The
    download takes a few seconds, so there is no cache.
