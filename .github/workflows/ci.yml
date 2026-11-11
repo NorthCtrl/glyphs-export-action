@@ -37,7 +37,7 @@ jobs:
       - name: shellcheck
         run: shellcheck src/*.sh
       - name: Python syntax
-        run: python3 -m py_compile src/report.py test/check_fonts.py
+        run: python3 -m py_compile src/*.py test/check_fonts.py
 
   # The action must refuse to run on anything but macOS.
   not-macos:

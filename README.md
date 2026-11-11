@@ -54,8 +54,14 @@ Glyphs 3. Until it can, this action downloads Glyphs 4 from Glyphs' own update
 server. That works for `4` and for a pinned build written with its version
 number, like `4.1.1-4108` (the name of the Glyphs download). A bare Glyphs 4
 build number such as `4108` does not work yet. A pinned Glyphs 4 build only
-works while Glyphs still offers its download, and the action trusts that
-download as it is: it checks no checksum.
+works while Glyphs still offers its download.
+
+The server is `updates.glyphsapp.com`, and the list of downloads is
+`appcast4.xml`, the same feed Glyphs 4 checks for its own updates. Each
+download in it is signed with Glyphs' update key, and the action checks that
+signature before installing. The feed only lists the newest builds, so an
+older pinned build can't be checked this way: the action warns, and relies on
+the Apple code signature check below.
 
 ## Inputs
 
@@ -105,13 +111,17 @@ will fail to load.
 
 1. Fails straight away if the runner is not macOS.
 2. Sets up Python 3.12 and installs the pinned glyphs-cli and pyobjc versions
+   (and `cryptography`, for the Glyphs 4 signature check)
    from [`requirements.txt`](requirements.txt) into a folder of their own, so
    the `python` your other steps use does not change.
 3. Installs the full Glyphs app into the runner's temporary folder. A second use
    of the action in the same job with the same `glyphs-version` reuses it. The
    download takes a few seconds, so there is no cache.
-4. Registers the app with macOS, so the system knows the Glyphs file types.
-5. Runs `glyphs export` and reads its report. The step fails if glyphs-cli fails,
+4. Checks the app's Apple code signature: it must be signed by Glyphs'
+   developer, Georg Seifert (team `X2L8375ZQ7`), and unchanged since. This
+   applies to Glyphs 3 and Glyphs 4 alike.
+5. Registers the app with macOS, so the system knows the Glyphs file types.
+6. Runs `glyphs export` and reads its report. The step fails if glyphs-cli fails,
    if any instance has an error, or if no font was exported. Warnings show up as
    annotations.
 
@@ -139,4 +149,4 @@ has to be installed on the runner
 
 ## Licence
 
-TODO: to be decided before this repository is made public.
+[MIT](LICENSE).
