@@ -1,0 +1,88 @@
+name: Glyphs Export
+description: Export fonts from Glyphs sources with glyphs-cli on a macOS runner.
+author: NorthCtrl
+branding:
+  icon: type
+  color: green
+
+inputs:
+  glyphs-version:
+    description: >-
+      Which Glyphs to export with. A build number such as `3536` (reproducible),
+      a major version `3` or `4` (newest stable build of that major, changes over time),
+      or a display version such as `3.5.1`. Pin a Glyphs 4 build as `4.1.1-4108`.
+    required: true
+  sources:
+    description: >-
+      Glyphs source files (`.glyphs` or `.glyphspackage`), one path or glob per line.
+      May be empty when `config` lists the sources.
+    required: false
+    default: ""
+  output-dir:
+    description: Folder the fonts are written to. Created if missing.
+    required: false
+    default: fonts
+  format:
+    description: Outline formats, comma-separated, `cff` and/or `tt`. Empty uses the Glyphs default.
+    required: false
+    default: ""
+  container:
+    description: File containers, comma-separated, `standard`, `woff` and/or `woff2`. Empty uses `standard`.
+    required: false
+    default: ""
+  config:
+    description: Path to a glyphs-cli export config file (JSON5).
+    required: false
+    default: ""
+  plugins:
+    description: >-
+      Glyphs plug-ins to load, one per line: a path to a plug-in bundle,
+      or the name of a plug-in that comes with Glyphs.
+    required: false
+    default: ""
+
+outputs:
+  glyphs-build:
+    description: The Glyphs build number used, for example `3536`.
+    value: ${{ steps.export.outputs.glyphs-build }}
+  glyphs-display-version:
+    description: The Glyphs display version used, for example `3.5.1`.
+    value: ${{ steps.export.outputs.glyphs-display-version }}
+  fonts:
+    description: The exported font files, one absolute path per line.
+    value: ${{ steps.export.outputs.fonts }}
+  output-dir:
+    description: Absolute path of the output folder.
+    value: ${{ steps.export.outputs.output-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check the runner
+      if: runner.os != 'macOS'
+      shell: bash
+      run: |
+        echo "::error::glyphs-export-action needs a macOS runner (runs-on: macos-latest), not ${RUNNER_OS}."
+        exit 1
+
+    # Python runs glyphs-cli and Python plug-ins; it is not added to the caller's PATH.
+    - name: Set up Python
+      id: python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: "3.12"
+        update-environment: false
+
+    - name: Export fonts
+      id: export
+      shell: bash
+      env:
+        PYTHON: ${{ steps.python.outputs.python-path }}
+        GLYPHS_VERSION: ${{ inputs.glyphs-version }}
+        SOURCES: ${{ inputs.sources }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        FORMAT: ${{ inputs.format }}
+        CONTAINER: ${{ inputs.container }}
+        CONFIG: ${{ inputs.config }}
+        PLUGINS: ${{ inputs.plugins }}
+      run: '"$GITHUB_ACTION_PATH/src/export.sh"'
