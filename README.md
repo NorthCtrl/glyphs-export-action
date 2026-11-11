@@ -133,6 +133,13 @@ has to be installed on the runner
   second wins. Export the two formats in separate steps if you need both.
 - **An unknown `format` value crashes glyphs-cli** instead of printing an error.
 
+## Versions
+
+Use `@v1`, which follows the newest 1.x release, or pin an exact release such as
+`@v1.0.0`. Changes that would break existing workflows only come in a new major
+version. Releases are listed on the
+[releases page](https://github.com/NorthCtrl/glyphs-export-action/releases).
+
 ## Licence
 
 [MIT](LICENSE).
