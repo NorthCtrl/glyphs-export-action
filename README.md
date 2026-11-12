@@ -102,10 +102,8 @@ will fail to load.
 4. Checks the app's Apple code signature: it must be signed by Glyphs'
    developer, Georg Seifert (team `X2L8375ZQ7`), and unchanged since. This
    applies to Glyphs 3 and Glyphs 4 alike.
-5. Registers the app with macOS, so the system knows the Glyphs file types.
-6. Runs `glyphs export` and reads its report. The step fails if glyphs-cli fails,
-   if any instance has an error, or if no font was exported. Warnings show up as
-   annotations.
+5. Runs `glyphs export` and reads its report. The step fails if glyphs-cli fails
+   or if no font was exported. Errors and warnings show up as annotations.
 
 ## Licence for Glyphs
 
@@ -116,17 +114,6 @@ has to be installed on the runner
 
 ## Known issues
 
-- **"Failed reading font" on GitHub runners.** glyphs-cli cannot read a source
-  until macOS knows the Glyphs file types, which happens when a Glyphs app is
-  registered with Launch Services. A fresh runner has none. The copy
-  `glyphs version install` puts in glyphs-cli's own folder is never registered,
-  so every export fails. One installed into `/Applications` with `--app` is
-  registered a few seconds later, so an export straight after installing fails
-  and a later one passes. This action registers the app itself before
-  exporting, so it does not retry. On a Mac that already has Glyphs installed,
-  the file types are known and none of this shows.
-- **glyphs-cli exits 0 when instances fail**, for example when a filter plug-in
-  is missing. This action reads the report and fails the step instead.
 - **Glyphs 3 skips CFF variable fonts** with a warning. Glyphs 4 exports them.
 - **Same file name for CFF and TrueType WOFF files.** With `format: cff,tt` and a
   WOFF container, both outlines are written to the same `.woff2` name and the

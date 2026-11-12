@@ -8,7 +8,6 @@
 set -eo pipefail
 
 action_dir=$(cd "$(dirname "$0")/.." && pwd)
-lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
 fail() {
 	echo "::error::$*"
@@ -116,11 +115,6 @@ codesign --verify --deep --strict \
 	-R='anchor apple generic and certificate leaf[subject.OU] = "X2L8375ZQ7"' "$app" ||
 	fail "$app is not signed by Glyphs' developer, or has changed since it was signed."
 
-# Register the app with Launch Services, so macOS knows the .glyphs and
-# .glyphspackage file types. Without this, glyphs-cli fails with
-# "Failed reading font", every time on a fresh runner.
-"$lsregister" -f "$app"
-
 # Read the version from the app itself: `glyphs version resolve` takes the build
 # from the file name, so "Glyphs 3.5.1-3536.app" gives "3536.app".
 display_version=$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")
@@ -144,7 +138,7 @@ echo
 status=0
 glyphs "${args[@]}" || status=$?
 
-# glyphs-cli exits 0 even when instances fail, so the report decides.
+# The report gives the `fonts` output and an annotation for each problem.
 {
 	echo "glyphs-build=$build"
 	echo "glyphs-display-version=$display_version"
