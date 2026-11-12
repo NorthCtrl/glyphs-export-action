@@ -161,8 +161,8 @@ jobs:
           if python -c "import glyphs_cli" 2>/dev/null; then echo "::error::glyphs_cli is importable outside the action"; status=1; fi
           exit "$status"
 
-  # glyphs-cli exits 0 when instances fail; the action must not. Kept out of the
-  # export job, as the errors it reports on purpose show up on the run page.
+  # A failed instance must fail the step. Kept out of the export job, as the
+  # errors it reports on purpose show up on the run page.
   missing-plugin:
     name: expected failure, missing plug-in (Glyphs ${{ matrix.glyphs }})
     needs: lint

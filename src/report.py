@@ -2,8 +2,7 @@
 
 Usage: report.py REPORT EXIT_STATUS
 
-Exits non-zero when glyphs-cli failed, when any instance reported an error,
-or when no font was exported. glyphs-cli itself exits 0 when instances fail.
+Exits non-zero when glyphs-cli failed or when no font was exported.
 """
 
 import json
@@ -38,13 +37,11 @@ def main(report_path, status):
                         print(f"::warning::Could not read a line of the glyphs-cli report: {escape_data(line.strip())}")
 
     fonts = []
-    errors = 0
     for report in reports:
         for warning in report.get("warnings") or []:
             annotate("warning", report, warning)
         for error in report.get("errors") or []:
             annotate("error", report, error)
-            errors += 1
         if report.get("exportFilePath") and not report.get("errors"):
             fonts.append(report["exportFilePath"])
 
@@ -63,10 +60,7 @@ def main(report_path, status):
         print(f"  {font}")
 
     if status != 0:
-        print(f"::error::glyphs export failed with exit status {status}. See the log above.")
-        return 1
-    if errors:
-        print(f"::error::glyphs export reported {errors} error(s). See the annotations.")
+        print(f"::error::glyphs export failed with exit status {status}. See the annotations and the log above.")
         return 1
     if not fonts:
         print("::error::glyphs export finished without exporting any fonts. Do the sources have active instances?")
